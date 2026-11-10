@@ -286,6 +286,7 @@ function renderSettings(){
   <div class="card">
     <p style="margin-top:0">Add your dose times to your phone's calendar as daily repeating events with an alarm. They ring even when this app is closed, with no account and no internet.</p>
     <p class="note">The file also includes a refill reminder for each item, set ahead of its projected run-out date. After a refill or a schedule change, export again and replace the old events.</p>
+    ${/iPhone|iPad/.test(navigator.userAgent)?`<p class="note"><strong>iPhone:</strong> ${(matchMedia("(display-mode: standalone)").matches||navigator.standalone)?"choose <em>Save to Files</em>, then open the Files app, tap <em>pill-alarms.ics</em> and choose <em>Add All</em>.":"tap <em>Add All</em> when Calendar asks."}</p>`:""}
     <button class="primary" onclick="exportICS()">Download calendar alarms (.ics)</button>
   </div>
   <h2>In-app notifications</h2>
@@ -430,7 +431,18 @@ function exportICS(){
       "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsEsc("Refill "+it.name)}`,"TRIGGER:-PT0M","END:VALARM","END:VEVENT");
   }
   L.push("END:VCALENDAR");
-  download(L.join("\r\n"), "pill-alarms.ics", "text/calendar");
+  const text=L.join("\r\n");
+  // Home-screen apps on iPhone can't download files directly, so hand the file to the share sheet instead.
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent), standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
+  if(ios && standalone && navigator.canShare){
+    const f=new File([text],"pill-alarms.ics",{type:"text/calendar"});
+    if(navigator.canShare({files:[f]})){
+      navigator.share({files:[f]}).then(()=>toast("Now open Files, tap pill-alarms.ics, then Add All"))
+        .catch(e=>{ if(e.name!=="AbortError") download(text,"pill-alarms.ics","text/calendar"); });
+      return;
+    }
+  }
+  download(text, "pill-alarms.ics", "text/calendar");
 }
 function download(text, name, type){
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name;

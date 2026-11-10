@@ -1,5 +1,5 @@
 // Offline cache for Pill Tracker. Bump VERSION when files change.
-const VERSION = "pills-v1";
+const VERSION = "pills-v2";
 const FILES = ["./", "index.html", "manifest.json", "icon.svg", "icon-192.png", "icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => {
