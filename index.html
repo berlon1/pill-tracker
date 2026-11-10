@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pill Tracker</title>
+<meta name="description" content="Private, offline tracker for daily supplements and medications.">
+<meta name="theme-color" content="#2f6f5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pills">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --ink:#1d2321; --muted:#68716d; --line:#e2e0d8;
+  --accent:#2f6f5e; --accent-ink:#ffffff; --accent-soft:#e3efe9;
+  --warn:#a35a00; --warn-soft:#fbefdc; --bad:#b3261e; --bad-soft:#fbe3e1; --ok:#2f6f5e;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121615; --card:#1b201f; --ink:#e8ece9; --muted:#9aa49f; --line:#2c3331;
+    --accent:#6cc3a6; --accent-ink:#0d1c17; --accent-soft:#1f3a31;
+    --warn:#f0b35a; --warn-soft:#3a2c17; --bad:#f2948d; --bad-soft:#3d1f1d; --ok:#6cc3a6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121615; --card:#1b201f; --ink:#e8ece9; --muted:#9aa49f; --line:#2c3331;
+  --accent:#6cc3a6; --accent-ink:#0d1c17; --accent-soft:#1f3a31;
+  --warn:#f0b35a; --warn-soft:#3a2c17; --bad:#f2948d; --bad-soft:#3d1f1d; --ok:#6cc3a6;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-bottom:calc(76px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+header{padding:calc(14px + env(safe-area-inset-top)) 16px 6px;max-width:640px;margin:0 auto}
+header h1{font-size:24px;margin:0;letter-spacing:-.01em}
+header p{margin:2px 0 0;color:var(--muted);font-size:14px}
+main{max-width:640px;margin:0 auto;padding:8px 16px 24px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:22px 0 8px;font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+.name{font-weight:600;overflow-wrap:anywhere}
+.sub{color:var(--muted);font-size:14px}
+.time{font-variant-numeric:tabular-nums;font-weight:700;font-size:16px;width:76px;flex:none;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+button{font:inherit;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;cursor:pointer;min-height:44px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent}
+button.danger{color:var(--bad);border-color:var(--bad)}
+button.small{padding:6px 10px;min-height:36px;font-size:14px}
+button:disabled{opacity:.5}
+.taken{background:var(--accent-soft);border-color:transparent}
+.taken .time{color:var(--ok)}
+.missed{border-color:var(--bad)}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px}
+.b-ok{background:var(--accent-soft);color:var(--ok)}
+.b-due{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.alert{background:var(--warn-soft);color:var(--ink);border-color:transparent}
+.alert strong{color:var(--warn)}
+.empty{text-align:center;color:var(--muted);padding:28px 12px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;max-width:160px;border:0;border-radius:0;background:none;color:var(--muted);padding:10px 4px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:60px}
+nav button svg{width:22px;height:22px}
+nav button[aria-current="page"]{color:var(--accent);font-weight:600}
+label{display:block;font-size:14px;color:var(--muted);margin:12px 0 4px}
+input,select,textarea{font:inherit;width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);min-height:44px}
+textarea{min-height:64px}
+.times{display:flex;flex-wrap:wrap;gap:8px}
+.times input{width:auto;flex:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+dialog{border:0;border-radius:16px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 40px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog form{padding:18px}
+dialog h3{margin:0 0 4px}
+.hist{display:grid;gap:3px;font-size:12px}
+.hist .cell{height:22px;border-radius:5px;background:var(--line)}
+.hist .full{background:var(--ok)} .hist .part{background:var(--warn)} .hist .none{background:var(--bad)}
+.hist .na{background:transparent}
+.hist .lbl{color:var(--muted);align-self:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:20;max-width:calc(100vw - 32px)}
+.note{font-size:14px;color:var(--muted)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches input{display:none}
+.swatches label{margin:0;width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent}
+.swatches input:checked + label{border-color:var(--ink)}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.bar span{display:block;height:100%;background:var(--ok)}
+.bar.low span{background:var(--warn)} .bar.out span{background:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Today</h1>
+  <p id="subtitle"></p>
+</header>
+<main id="view"></main>
+
+<nav>
+  <button data-tab="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today</button>
+  <button data-tab="items"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-45 12 12)"/><path d="M9.2 9.2l5.6 5.6"/></svg>My items</button>
+  <button data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>History</button>
+  <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="7" cy="18" r="2" fill="currentColor"/></svg>Reminders</button>
+</nav>
+
+<dialog id="dlg"></dialog>
+
+<script>
+"use strict";
+/* ---------- storage (all data stays in this browser) ---------- */
+const KEY = "pilltracker.v1";
+const COLORS = ["#2f6f5e","#3b6fb6","#8a4fb3","#c0563c","#c48a12","#4d8a2b","#b33f78","#5b6770"];
+let db = load();
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.items) return d; }catch(e){}
+  return { items:[], log:{}, settings:{ notify:false, graceMin:60 }, notified:{} };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){ toast("Couldn't save. Is storage full or blocked?"); } }
+if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+const pad = n => String(n).padStart(2,"0");
+const dayKey = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const minutesOf = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+const fmtTime = t => { try{ const [h,m]=t.split(":").map(Number); const d=new Date(); d.setHours(h,m,0,0); return d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}); }catch(e){ return t; } };
+const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
+
+function dosesForDay(dk){
+  const out=[];
+  for(const it of db.items){
+    if(it.paused) continue;
+    if(it.start && dk < it.start) continue;
+    for(const t of it.times) out.push({ item:it, time:t, key:`${it.id}@${t}` });
+  }
+  return out.sort((a,b)=>a.time.localeCompare(b.time) || a.item.name.localeCompare(b.item.name));
+}
+function perDay(it){ return it.paused ? 0 : (it.times.length * (Number(it.perDose)||1)); }
+function daysLeft(it){ const pd = perDay(it); if(!pd || it.stock==null || it.stock==="") return null; return Math.floor(Number(it.stock)/pd); }
+function supplyState(it){
+  const d = daysLeft(it); if(d==null) return null;
+  if(d <= 0) return "out"; if(d <= (Number(it.lowDays)||7)) return "low"; return "ok";
+}
+function runOutDate(it){ const d=daysLeft(it); if(d==null) return null; const x=new Date(); x.setDate(x.getDate()+d); return x; }
+
+/* ---------- actions ---------- */
+function take(itemId, time, dk=dayKey()){
+  const it = db.items.find(i=>i.id===itemId); if(!it) return;
+  db.log[dk] = db.log[dk] || {};
+  const k = `${itemId}@${time}`;
+  if(db.log[dk][k]){ // undo
+    delete db.log[dk][k];
+    if(it.stock!=null && it.stock!=="") it.stock = Number(it.stock) + (Number(it.perDose)||1);
+  } else {
+    db.log[dk][k] = Date.now();
+    if(it.stock!=null && it.stock!=="") it.stock = Math.max(0, Number(it.stock) - (Number(it.perDose)||1));
+    const s = supplyState(it);
+    if(s==="low"||s==="out") toast(`${it.name}: ${s==="out"?"out of supply":"about "+plural(daysLeft(it),"day")+" left"}. Time to refill.`);
+  }
+  save(); render();
+}
+
+/* ---------- views ---------- */
+let tab = "today";
+function render(){
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===tab?"page":"false"));
+  ({today:renderToday, items:renderItems, history:renderHistory, settings:renderSettings})[tab]();
+}
+
+function supplyAlerts(){
+  const lows = db.items.filter(it=>!it.paused && ["low","out"].includes(supplyState(it)));
+  return lows.map(it=>{
+    const d = daysLeft(it);
+    return `<div class="card alert row"><div class="grow"><strong>${d<=0?"Out":"Running low"}:</strong> ${esc(it.name)}<div class="sub">${d<=0?"No supply left":`${it.stock} left, about ${plural(d,"day")}`}</div></div>
+      <button class="small" onclick="refill('${it.id}')">Refill</button></div>`;
+  }).join("");
+}
+
+function renderToday(){
+  const d=new Date(), dk=dayKey(d);
+  $("#title").textContent="Today";
+  $("#subtitle").textContent=d.toLocaleDateString([], {weekday:"long", month:"long", day:"numeric"});
+  const doses = dosesForDay(dk), log = db.log[dk]||{}, nm = nowMin(), grace = Number(db.settings.graceMin)||60;
+  if(!db.items.length){
+    $("#view").innerHTML = `<div class="card empty"><p style="margin-top:0"><strong>Nothing here yet</strong></p>
+      <p>Add the supplements and medications you take, with the times you take them.</p>
+      <button class="primary" onclick="editItem()">Add your first item</button></div>`;
+    return;
+  }
+  const done = doses.filter(x=>log[x.key]).length;
+  let html = supplyAlerts();
+  html += `<h2>${done} of ${doses.length} taken</h2>`;
+  if(!doses.length) html += `<div class="card empty">Nothing scheduled today.</div>`;
+  for(const x of doses){
+    const t = log[x.key], m = minutesOf(x.time);
+    let cls="", badge="";
+    if(t){ cls="taken"; badge=`<span class="badge b-ok">Taken ${new Date(t).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"})}</span>`; }
+    else if(nm > m + grace){ cls="missed"; badge=`<span class="badge b-bad">Missed?</span>`; }
+    else if(nm >= m - 15){ badge=`<span class="badge b-due">Due now</span>`; }
+    html += `<div class="card row ${cls}">
+      <div class="time">${esc(fmtTime(x.time))}</div>
+      <span class="dot" style="background:${x.item.color}"></span>
+      <div class="grow"><div class="name">${esc(x.item.name)}</div>
+        <div class="sub">${esc(x.item.dose||"")}${x.item.notes?` · ${esc(x.item.notes)}`:""}</div>${badge}</div>
+      <button class="${t?"ghost small":"primary"}" onclick="take('${x.item.id}','${x.time}')">${t?"Undo":"Take"}</button>
+    </div>`;
+  }
+  $("#view").innerHTML = html;
+}
+
+function renderItems(){
+  $("#title").textContent="My items";
+  $("#subtitle").textContent="What you take, when, and how much is left";
+  let html = `<div class="actions" style="margin-top:4px"><button class="primary" onclick="editItem()">+ Add item</button></div>`;
+  if(!db.items.length) html += `<div class="card empty" style="margin-top:12px">No items yet.</div>`;
+  for(const it of db.items){
+    const d=daysLeft(it), s=supplyState(it), cap = Math.max(Number(it.lastRefill)||0, Number(it.stock)||0, 1);
+    html += `<div class="card" style="margin-top:12px">
+      <div class="row"><span class="dot" style="background:${it.color}"></span>
+        <div class="grow"><div class="name">${esc(it.name)} ${it.paused?'<span class="badge b-due">Paused</span>':""}</div>
+        <div class="sub">${esc(it.dose||"")} · ${it.times.map(fmtTime).map(esc).join(", ")||"no times"}</div></div>
+        <button class="small" onclick="editItem('${it.id}')">Edit</button></div>
+      ${d==null ? `<div class="sub" style="margin-top:8px">Supply not tracked</div>` :
+      `<div class="sub" style="margin-top:8px">${it.stock} left · ${perDay(it)}/day · ${d<=0?"out now":`runs out ~${runOutDate(it).toLocaleDateString([], {month:"short",day:"numeric"})}`}</div>
+       <div class="bar ${s==="ok"?"":s}"><span style="width:${Math.min(100, (Number(it.stock)/cap)*100)}%"></span></div>
+       <div class="actions" style="margin-top:10px"><button class="small" onclick="refill('${it.id}')">Refill</button></div>`}
+    </div>`;
+  }
+  $("#view").innerHTML = html;
+}
+
+function renderHistory(){
+  $("#title").textContent="History";
+  $("#subtitle").textContent="Last 14 days";
+  if(!db.items.length){ $("#view").innerHTML=`<div class="card empty">Nothing logged yet.</div>`; return; }
+  const days=[]; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  let html = `<div class="card" style="overflow-x:auto"><div class="hist" style="grid-template-columns:minmax(70px,1fr) repeat(14, minmax(14px,22px))">`;
+  html += `<div></div>` + days.map(d=>`<div class="lbl" style="text-align:center">${d.getDate()}</div>`).join("");
+  let totalDue=0,totalDone=0;
+  for(const it of db.items){
+    html += `<div class="lbl" title="${esc(it.name)}">${esc(it.name)}</div>`;
+    for(const d of days){
+      const dk=dayKey(d), log=db.log[dk]||{};
+      if(it.start && dk<it.start || !it.times.length){ html+=`<div class="cell na"></div>`; continue; }
+      const n = it.times.filter(t=>log[`${it.id}@${t}`]).length;
+      const isToday = dk===dayKey();
+      if(!isToday){ totalDue+=it.times.length; totalDone+=n; }
+      const c = n===it.times.length?"full": n>0?"part": isToday?"":"none";
+      html += `<div class="cell ${c}" title="${dk}: ${n}/${it.times.length}"></div>`;
+    }
+  }
+  html += `</div><p class="note" style="margin-bottom:0">Green: all doses · Amber: some · Red: none. Today is still in progress.</p></div>`;
+  if(totalDue) html += `<div class="card"><strong>${Math.round(totalDone/totalDue*100)}%</strong> of scheduled doses taken over the previous 13 days.</div>`;
+  html += `<h2>Fix a past day</h2><div class="card"><label for="pastday" style="margin-top:0">Pick a day to mark doses you forgot to log</label>
+    <input type="date" id="pastday" max="${dayKey()}" onchange="pastDay(this.value)"><div id="pastlist"></div></div>`;
+  $("#view").innerHTML = html;
+}
+function pastDay(dk){
+  if(!dk) return;
+  const log=db.log[dk]||{};
+  $("#pastlist").innerHTML = dosesForDay(dk).map(x=>`<div class="row" style="margin-top:10px"><div class="time">${esc(fmtTime(x.time))}</div>
+    <div class="grow">${esc(x.item.name)}</div>
+    <button class="small ${log[x.key]?"":"primary"}" onclick="take('${x.item.id}','${x.time}','${dk}');pastDay('${dk}')">${log[x.key]?"Undo":"Mark taken"}</button></div>`).join("") || `<p class="note">Nothing scheduled that day.</p>`;
+  $("#pastday").value = dk;
+}
+
+function renderSettings(){
+  $("#title").textContent="Reminders";
+  $("#subtitle").textContent="Alarms, backup and privacy";
+  const perm = ("Notification" in window) ? Notification.permission : "unsupported";
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  $("#view").innerHTML = `
+  <h2>Reliable alarms (recommended)</h2>
+  <div class="card">
+    <p style="margin-top:0">Add your dose times to your phone's calendar as daily repeating events with an alarm. They ring even when this app is closed, with no account and no internet.</p>
+    <p class="note">The file also includes a refill reminder for each item, set ahead of its projected run-out date. After a refill or a schedule change, export again and replace the old events.</p>
+    <button class="primary" onclick="exportICS()">Download calendar alarms (.ics)</button>
+  </div>
+  <h2>In-app notifications</h2>
+  <div class="card">
+    <p style="margin-top:0">Shows a notification when a dose is due while the app is open or recently used. Phones pause web apps in the background, so treat this as a backup to the calendar alarms.</p>
+    ${perm==="unsupported" ? `<p class="note">This browser doesn't support notifications here.${/iPhone|iPad/.test(navigator.userAgent)&&!standalone?" On iPhone, add the app to your Home Screen first (Share → Add to Home Screen).":""}</p>` :
+      `<div class="row"><div class="grow">Status: <strong>${db.settings.notify && perm==="granted" ? "On" : perm==="denied" ? "Blocked in browser settings" : "Off"}</strong></div>
+      <button class="small" onclick="toggleNotify()">${db.settings.notify && perm==="granted" ? "Turn off" : "Turn on"}</button></div>`}
+    <label for="grace">Mark a dose as possibly missed after</label>
+    <select id="grace" onchange="db.settings.graceMin=Number(this.value);save()">
+      ${[30,60,120,180].map(v=>`<option value="${v}" ${Number(db.settings.graceMin)===v?"selected":""}>${v<60?v+" minutes":plural(v/60,"hour")}</option>`).join("")}
+    </select>
+  </div>
+  <h2>Backup</h2>
+  <div class="card">
+    <p style="margin-top:0" class="note">Everything is stored only on this device, in this browser. Clearing browser data erases it, so keep a backup file now and then.</p>
+    <div class="actions" style="margin-top:0">
+      <button onclick="exportJSON()">Save backup</button>
+      <button onclick="$('#imp').click()">Restore backup</button>
+      <input type="file" id="imp" accept="application/json,.json" hidden onchange="importJSON(this.files[0])">
+    </div>
+  </div>
+  <h2>Privacy</h2>
+  <div class="card">
+    <p style="margin-top:0" class="note">No account, no server, no analytics. The app makes no network requests after it loads, and works offline once installed.</p>
+    <button class="danger" onclick="wipe()">Erase all data on this device</button>
+  </div>`;
+}
+
+/* ---------- item editor ---------- */
+function editItem(id){
+  const it = db.items.find(i=>i.id===id) || { id:null, name:"", dose:"1 tablet", perDose:1, times:["08:00"], stock:"", lowDays:7, notes:"", color:COLORS[db.items.length%COLORS.length], paused:false };
+  const dlg = $("#dlg");
+  dlg.innerHTML = `<form method="dialog" id="itemForm">
+    <h3>${id?"Edit item":"Add item"}</h3>
+    <label for="f-name">Name</label><input id="f-name" required value="${esc(it.name)}" placeholder="e.g. Vitamin D3">
+    <div class="grid2">
+      <div><label for="f-dose">Dose</label><input id="f-dose" value="${esc(it.dose)}" placeholder="1 capsule, 500 mg"></div>
+      <div><label for="f-per">Pills per dose</label><input id="f-per" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(it.perDose)}"></div>
+    </div>
+    <label>Times each day</label>
+    <div class="times" id="f-times">${it.times.map(t=>timeInput(t)).join("")}</div>
+    <div class="actions" style="margin-top:8px"><button type="button" class="small" onclick="addTime()">+ Add time</button></div>
+    <label for="f-notes">Notes</label><input id="f-notes" value="${esc(it.notes)}" placeholder="With food, away from coffee…">
+    <div class="grid2">
+      <div><label for="f-stock">Pills on hand</label><input id="f-stock" type="number" min="0" step="0.5" inputmode="decimal" value="${esc(it.stock)}" placeholder="leave blank to skip"></div>
+      <div><label for="f-low">Warn when left (days)</label><input id="f-low" type="number" min="1" inputmode="numeric" value="${esc(it.lowDays)}"></div>
+    </div>
+    <label>Color</label>
+    <div class="swatches">${COLORS.map((c,i)=>`<input type="radio" name="color" id="c${i}" value="${c}" ${c===it.color?"checked":""}><label for="c${i}" style="background:${c}" aria-label="color ${i+1}"></label>`).join("")}</div>
+    <label style="display:flex;align-items:center;gap:8px;color:var(--ink)"><input type="checkbox" id="f-paused" style="width:auto;min-height:0" ${it.paused?"checked":""}> Paused (hide from today and alarms)</label>
+    <div class="actions">
+      <button type="submit" class="primary" value="save">Save</button>
+      <button type="button" onclick="$('#dlg').close()">Cancel</button>
+      ${id?`<button type="button" class="danger" style="margin-left:auto" onclick="delItem('${id}')">Delete</button>`:""}
+    </div></form>`;
+  $("#itemForm").onsubmit = e => {
+    e.preventDefault();
+    const name = $("#f-name").value.trim(); if(!name){ $("#f-name").focus(); return; }
+    const times = [...new Set([...document.querySelectorAll("#f-times input")].map(i=>i.value).filter(Boolean))].sort();
+    const stockStr = $("#f-stock").value.trim();
+    const upd = { ...it, name, dose:$("#f-dose").value.trim(), perDose:Number($("#f-per").value)||1, times,
+      notes:$("#f-notes").value.trim(), stock: stockStr===""? "" : Number(stockStr), lowDays:Number($("#f-low").value)||7,
+      color:(document.querySelector('input[name="color"]:checked')||{}).value||it.color, paused:$("#f-paused").checked };
+    if(stockStr!=="" && (it.stock===""||it.stock==null||Number(stockStr)>Number(it.stock))) upd.lastRefill = Number(stockStr);
+    if(!it.id){ upd.id=uid(); upd.start=dayKey(); db.items.push(upd); }
+    else db.items[db.items.findIndex(i=>i.id===it.id)] = upd;
+    save(); dlg.close(); render(); toast("Saved");
+  };
+  dlg.showModal();
+}
+function timeInput(t){ return `<span class="row" style="gap:4px"><input type="time" value="${esc(t)}" required><button type="button" class="small ghost" aria-label="Remove time" onclick="this.parentNode.remove()">✕</button></span>`; }
+function addTime(){ $("#f-times").insertAdjacentHTML("beforeend", timeInput("12:00")); }
+function delItem(id){
+  const it=db.items.find(i=>i.id===id);
+  if(!confirm(`Delete ${it.name}? Its history stays in backups but won't show here.`)) return;
+  db.items = db.items.filter(i=>i.id!==id); save(); $("#dlg").close(); render();
+}
+function refill(id){
+  const it=db.items.find(i=>i.id===id);
+  const v = prompt(`How many pills did you add to ${it.name}? (Current: ${it.stock===""?0:it.stock})`, it.lastRefill||30);
+  if(v===null) return; const n=Number(v); if(!(n>0)) return toast("Enter a number above 0");
+  it.stock = (Number(it.stock)||0) + n; it.lastRefill = it.stock; save(); render();
+  toast(`${it.name}: ${it.stock} on hand. Re-export calendar alarms to move the refill reminder.`);
+}
+
+/* ---------- reminders ---------- */
+async function toggleNotify(){
+  if(db.settings.notify && Notification.permission==="granted"){ db.settings.notify=false; save(); render(); return; }
+  const p = await Notification.requestPermission();
+  db.settings.notify = p==="granted"; save(); render();
+  if(p==="granted") notify("Reminders on", "You'll be notified when a dose is due while the app is running.");
+}
+async function notify(title, body){
+  try{
+    const reg = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if(reg) return reg.showNotification(title, { body, icon:"icon-192.png", badge:"icon-192.png", tag:title });
+    new Notification(title, { body });
+  }catch(e){ toast(`${title}: ${body}`); }
+}
+function checkDue(){
+  const dk=dayKey(), nm=nowMin(), log=db.log[dk]||{};
+  db.notified = db.notified || {};
+  for(const k of Object.keys(db.notified)) if(!k.startsWith(dk)) delete db.notified[k];
+  const due = dosesForDay(dk).filter(x=>!log[x.key] && nm>=minutesOf(x.time) && nm<=minutesOf(x.time)+(Number(db.settings.graceMin)||60) && !db.notified[`${dk}|${x.key}`]);
+  if(!due.length) return;
+  due.forEach(x=>db.notified[`${dk}|${x.key}`]=1); save();
+  const body = due.map(x=>`${x.item.name}${x.item.dose?" ("+x.item.dose+")":""}`).join(", ");
+  if(db.settings.notify && "Notification" in window && Notification.permission==="granted") notify("Time to take", body);
+  else toast(`Due now: ${body}`);
+  if(tab==="today") render();
+}
+setInterval(()=>{ checkDue(); if(tab==="today" && !$("#dlg").open) render(); }, 30000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ checkDue(); render(); } });
+
+/* ---------- calendar export ---------- */
+function icsEsc(s){ return String(s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function icsDate(d, withTime=true){ return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}` + (withTime?`T${pad(d.getHours())}${pad(d.getMinutes())}00`:""); }
+function exportICS(){
+  const active = db.items.filter(i=>!i.paused && i.times.length);
+  if(!active.length) return toast("Add an item with a time first");
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z", L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//PillTracker//EN","CALSCALE:GREGORIAN","X-WR-CALNAME:Pills"];
+  const today = new Date();
+  // group items that share a time into one alarm
+  const byTime = {};
+  for(const it of active) for(const t of it.times) (byTime[t]=byTime[t]||[]).push(it);
+  for(const [t, its] of Object.entries(byTime)){
+    const [h,m]=t.split(":").map(Number); const s=new Date(today); s.setHours(h,m,0,0); const e=new Date(s.getTime()+10*60000);
+    const title = "Take: " + its.map(i=>i.name).join(", ");
+    const desc = its.map(i=>`${i.name}${i.dose?" - "+i.dose:""}${i.notes?" ("+i.notes+")":""}`).join("\n");
+    L.push("BEGIN:VEVENT",`UID:pill-${t.replace(":","")}@pilltracker.local`,`DTSTAMP:${stamp}`,`DTSTART:${icsDate(s)}`,`DTEND:${icsDate(e)}`,
+      "RRULE:FREQ=DAILY",`SUMMARY:${icsEsc(title)}`,`DESCRIPTION:${icsEsc(desc)}`,"TRANSP:TRANSPARENT",
+      "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsEsc(title)}`,"TRIGGER:-PT0M","END:VALARM","END:VEVENT");
+  }
+  for(const it of active){
+    const d=daysLeft(it); if(d==null) continue;
+    const when=new Date(); when.setDate(when.getDate()+Math.max(0, d-(Number(it.lowDays)||7))); when.setHours(10,0,0,0);
+    if(when < new Date()){ when.setTime(Date.now()+30*60000); when.setSeconds(0,0); } // already low: remind soon
+    const end=new Date(when.getTime()+15*60000);
+    L.push("BEGIN:VEVENT",`UID:refill-${it.id}@pilltracker.local`,`DTSTAMP:${stamp}`,`DTSTART:${icsDate(when)}`,`DTEND:${icsDate(end)}`,
+      `SUMMARY:${icsEsc("Refill "+it.name)}`,`DESCRIPTION:${icsEsc(`About ${plural(Math.min(d, Number(it.lowDays)||7),"day")} of ${it.name} left. Runs out around ${runOutDate(it).toDateString()}.`)}`,
+      "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsEsc("Refill "+it.name)}`,"TRIGGER:-PT0M","END:VALARM","END:VEVENT");
+  }
+  L.push("END:VCALENDAR");
+  download(L.join("\r\n"), "pill-alarms.ics", "text/calendar");
+}
+function download(text, name, type){
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ---------- backup ---------- */
+function exportJSON(){ download(JSON.stringify(db,null,2), `pill-tracker-backup-${dayKey()}.json`, "application/json"); }
+function importJSON(f){
+  if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ const d=JSON.parse(r.result); if(!Array.isArray(d.items)) throw 0;
+    if(!confirm("Replace everything on this device with this backup?")) return;
+    db={ items:d.items, log:d.log||{}, settings:d.settings||{notify:false,graceMin:60}, notified:{} }; save(); render(); toast("Backup restored");
+  }catch(e){ toast("That file isn't a Pill Tracker backup"); } };
+  r.readAsText(f);
+}
+function wipe(){ if(confirm("Erase all items and history from this device? This can't be undone.")){ localStorage.removeItem(KEY); db=load(); render(); } }
+
+/* ---------- boot ---------- */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; render(); scrollTo(0,0); });
+if("serviceWorker" in navigator && location.protocol==="https:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+render(); checkDue();
+</script>
+</body>
+</html>
